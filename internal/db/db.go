@@ -1,58 +1,88 @@
 package db
 
 import (
-	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis"
 )
 
-type ObjectRedis struct {
-	Redis *redis.Client
+var once sync.Once
+
+// Object.
+type objectRedis struct {
+	db *redis.Client
 }
 
-type iRedis interface {
-	PingRedis() error
-	SetData(k, v string, ttl time.Duration) error
-	GetData(k string) (string, error)
+// Interface.
+type RedisI interface {
+	Close() error
+	Ping() error
+	SendStringTTL(k, v string, ttl time.Duration) error
+	RecvString(k string) (string, error)
+	CheckExistsKey(k string) (result int64, err error)
 }
 
-func InstanceRedis(addr, pwd string, dbNum int) (*redis.Client, func(), error) {
+var inst *objectRedis
+
+// Constructor.
+func New(addr, pwd string, dbNum int) (inf RedisI, err error) {
+
+	// Check.
 	if addr == "" {
-		return nil, nil, errors.New("missed addres db")
+		return nil, ErrNilDBPointer
 	}
 	if dbNum < 0 {
-		return nil, nil, fmt.Errorf("nmber db less 0:{%d}", dbNum)
+		return nil, fmt.Errorf("number of db less 0:<%d>", dbNum)
 	}
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: pwd,
-		DB:       dbNum,
+	// Logic.
+	once.Do(func() {
+		rdb := redis.NewClient(&redis.Options{
+			Addr:     addr,
+			Password: pwd,
+			DB:       dbNum,
+		})
+
+		inst = &objectRedis{
+			db: rdb,
+		}
 	})
 
-	fc := func() {
-		err := rdb.Close()
-		if err != nil {
-			fmt.Printf("fault close db connect:{%v}\n", err)
-		}
-	}
-
-	return rdb, fc, nil
+	return inst, nil
 }
 
-func InterfaceRedis(r *redis.Client) (iRedis, error) {
-	if r == nil {
-		return nil, errors.New("missed pointer Redis")
+// Close DB connect. Return error.
+func (r *objectRedis) Close() error {
+
+	// Check.
+	if r.db == nil {
+		return ErrNilDBPointer
 	}
-	return &ObjectRedis{
-		Redis: r,
-	}, nil
+
+	// Logic.
+	err := r.db.Close()
+	if err != nil {
+		return fmt.Errorf("Fault close connect: <%w>", err)
+	}
+
+	once = sync.Once{}
+	inst = nil
+
+	return nil
 }
 
-func (r *ObjectRedis) PingRedis() error {
-	pong, err := r.Redis.Ping().Result()
+// Check connect. Return error.
+func (r *objectRedis) Ping() error {
+
+	// Check.
+	if r.db == nil {
+		return ErrNilDBPointer
+	}
+
+	// Logic.
+	pong, err := r.db.Ping().Result()
 	if err != nil {
 		return fmt.Errorf("fault ping Redis: %v", err)
 	}
@@ -62,18 +92,77 @@ func (r *ObjectRedis) PingRedis() error {
 	return nil
 }
 
-func (r *ObjectRedis) SetData(k, v string, ttl time.Duration) error {
-	err := r.Redis.Set(k, v, ttl).Err()
+// Send string with TTL. Return error.
+//
+// Params:
+//
+//	r - key.
+//	v - value.
+//	ttl - TTL.
+func (r *objectRedis) SendStringTTL(k, v string, ttl time.Duration) error {
+
+	// Check.
+	if r.db == nil {
+		return ErrNilDBPointer
+	}
+	if k == "" {
+		return ErrMissingKey
+	}
+	if v == "" {
+		return ErrMissingValue
+	}
+	if ttl <= 0 {
+		return ErrMissingTTL
+	}
+
+	// Logic.
+	err := r.db.Set(k, v, ttl).Err()
 	if err != nil {
 		return fmt.Errorf("fault Tx data: %v", err)
 	}
 	return nil
 }
 
-func (r *ObjectRedis) GetData(k string) (string, error) {
-	retrievedValue, err := r.Redis.Get(k).Result()
+// Recieve string by key. Return string and error.
+//
+// Params:
+//
+//	k - key.
+func (r *objectRedis) RecvString(k string) (string, error) {
+
+	// Check.
+	if r.db == nil {
+		return "", ErrNilDBPointer
+	}
+
+	// Logic.
+	retrievedValue, err := r.db.Get(k).Result()
 	if err != nil {
 		return "", fmt.Errorf("fault Get value by key{%s}: %v", k, err)
 	}
 	return retrievedValue, nil
+}
+
+// Check exists key. Return 1 - if key exists and error.
+//
+// Params:
+//
+//	k - key.
+func (r *objectRedis) CheckExistsKey(k string) (result int64, err error) {
+
+	// Check.
+	if r.db == nil {
+		return 0, ErrNilDBPointer
+	}
+	if k == "" {
+		return 0, ErrMissingKey
+	}
+
+	// Logic.
+	result, err = r.db.Exists(k).Result()
+	if err != nil {
+		return 0, fmt.Errorf("Function Exists, returned error: <%w>", err)
+	}
+
+	return result, nil
 }
