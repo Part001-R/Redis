@@ -14,4 +14,7 @@ var (
 
 	// missing TTL
 	ErrMissingTTL = errors.New("missing TTL")
+
+	// fault update value
+	ErrUpdateValue = errors.New("fault update data: redis: nil")
 )

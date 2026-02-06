@@ -183,3 +183,129 @@ func TestCheckExistsKey(t *testing.T) {
 	})
 
 }
+
+// Test update exists string.
+func TestUpdateStringTTL(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		value := "Bar"
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.UpdateStringTTL(key, value, ttl)
+		require.Equalf(t, ErrMissingKey, err, "Errir is not equal")
+	})
+
+	t.Run("Missing value", func(t *testing.T) {
+
+		key := "Foo"
+		value := ""
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.UpdateStringTTL(key, value, ttl)
+		require.Equalf(t, ErrMissingValue, err, "Errir is not equal")
+	})
+
+	t.Run("Missing ttl", func(t *testing.T) {
+
+		key := "Foo"
+		value := "Bar"
+		ttl := time.Duration(0 * time.Second)
+
+		err := db.UpdateStringTTL(key, value, ttl)
+		require.Equalf(t, ErrMissingTTL, err, "Errir is not equal")
+	})
+
+	t.Run("Try update missing entry", func(t *testing.T) {
+
+		key := "Foo"
+		value := "Bar"
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.UpdateStringTTL(key, value, ttl)
+		require.Nilf(t, err, "Want nil")
+	})
+
+	t.Run("Correct update", func(t *testing.T) {
+
+		key := "Foo"
+		value := "Bar"
+		ttl := time.Duration(1 * time.Second)
+		err := db.SendStringTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected send error")
+
+		value += "Bar"
+		err = db.UpdateStringTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected update error")
+
+		rxValue, err := db.RecvString(key)
+		require.NoErrorf(t, err, "unexpected error recieve value")
+		assert.Equalf(t, value, rxValue, "Values is not equal")
+	})
+}
+
+// Test update exists string with get prev value.
+func TestUpdateStringRecievePrevTTL(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		value := "Bar"
+		_, err := db.UpdateStringRecievePrev(key, value)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Missing value", func(t *testing.T) {
+
+		key := "Foo"
+		value := ""
+		_, err := db.UpdateStringRecievePrev(key, value)
+		require.Equalf(t, ErrMissingValue, err, "Error is not equal")
+	})
+
+	t.Run("Not exists update", func(t *testing.T) {
+
+		key := "Foo"
+		value := "Bar"
+
+		_, err := db.UpdateStringRecievePrev(key, value)
+		require.Nilf(t, err, "want nil")
+	})
+
+	t.Run("Exists update", func(t *testing.T) {
+
+		key := "Foo"
+		value := "Bar"
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendStringTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error")
+
+		value2 := value + value
+		rxValue, err := db.UpdateStringRecievePrev(key, value2)
+		require.NotNilf(t, rxValue, "unexpected nil")
+		assert.Equalf(t, value, rxValue, "Values is not equal")
+
+		value3 := value2 + value
+		rxValue, err = db.UpdateStringRecievePrev(key, value3)
+		require.NotNilf(t, rxValue, "unexpected nil")
+		assert.Equalf(t, value2, rxValue, "Values is not equal")
+	})
+}

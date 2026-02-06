@@ -17,11 +17,20 @@ type objectRedis struct {
 
 // Interface.
 type RedisI interface {
+	// Close connect.
 	Close() error
+	// Check connect.
 	Ping() error
+	// Send string.
 	SendStringTTL(k, v string, ttl time.Duration) error
+	// Request string.
 	RecvString(k string) (string, error)
+	// Check exists key.
 	CheckExistsKey(k string) (result int64, err error)
+	// Update string value.
+	UpdateStringTTL(k, v string, ttl time.Duration) error
+	// Update string value and recieve previous value.
+	UpdateStringRecievePrev(k, v string) (string, error)
 }
 
 var inst *objectRedis
@@ -92,7 +101,7 @@ func (r *objectRedis) Ping() error {
 	return nil
 }
 
-// Send string with TTL. Return error.
+// Send new string with TTL. Return error.
 //
 // Params:
 //
@@ -116,7 +125,7 @@ func (r *objectRedis) SendStringTTL(k, v string, ttl time.Duration) error {
 	}
 
 	// Logic.
-	err := r.db.Set(k, v, ttl).Err()
+	err := r.db.SetNX(k, v, ttl).Err()
 	if err != nil {
 		return fmt.Errorf("fault Tx data: %v", err)
 	}
@@ -165,4 +174,63 @@ func (r *objectRedis) CheckExistsKey(k string) (result int64, err error) {
 	}
 
 	return result, nil
+}
+
+// Update exists string with TTL. Return error.
+//
+// Params:
+//
+//	r - key.
+//	v - value.
+//	ttl - TTL.
+func (r *objectRedis) UpdateStringTTL(k, v string, ttl time.Duration) error {
+
+	// Check.
+	if r.db == nil {
+		return ErrNilDBPointer
+	}
+	if k == "" {
+		return ErrMissingKey
+	}
+	if v == "" {
+		return ErrMissingValue
+	}
+	if ttl <= 0 {
+		return ErrMissingTTL
+	}
+
+	// Logic.
+	err := r.db.SetXX(k, v, ttl).Err()
+	if err != nil {
+		return fmt.Errorf("fault update data: %v", err)
+	}
+	return nil
+}
+
+// Update string with TTL. Return previous value and error.
+//
+// Params:
+//
+//	r - key.
+//	v - value.
+func (r *objectRedis) UpdateStringRecievePrev(k, v string) (string, error) {
+
+	// Check.
+	if r.db == nil {
+		return "", ErrNilDBPointer
+	}
+	if k == "" {
+		return "", ErrMissingKey
+	}
+	if v == "" {
+		return "", ErrMissingValue
+	}
+
+	// Logic.
+	value, err := r.db.GetSet(k, v).Result()
+	if err != nil {
+		return "", fmt.Errorf("fault update data: %v", err)
+	}
+
+	return value, nil
 }
