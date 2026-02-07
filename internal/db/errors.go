@@ -17,4 +17,10 @@ var (
 
 	// fault update value
 	ErrUpdateValue = errors.New("fault update data: redis: nil")
+
+	// error length
+	ErrLength = errors.New("error length")
+
+	// is not integer
+	ErrIsNotInteger = errors.New("is not integer")
 )
