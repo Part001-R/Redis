@@ -23,4 +23,10 @@ var (
 
 	// is not integer
 	ErrIsNotInteger = errors.New("is not integer")
+
+	// key is not exists
+	ErrKeyIsNotExists = errors.New("key is not exists")
+
+	// key is exists
+	ErrKeyIsExists = errors.New("key is exists")
 )

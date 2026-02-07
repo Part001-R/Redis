@@ -123,9 +123,8 @@ func TestRecvString(t *testing.T) {
 
 	t.Run("Missing key", func(t *testing.T) {
 
-		rxValue, err := db.RecvString("")
-		require.Errorf(t, err, "Want error")
-		assert.Equalf(t, "", rxValue, "Values is not equal")
+		_, err := db.RecvString("")
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
 	})
 
 	t.Run("Correct recieve", func(t *testing.T) {
@@ -162,7 +161,17 @@ func TestCheckExistsKey(t *testing.T) {
 		assert.Equalf(t, int64(0), rxValue, "Values is not equal")
 	})
 
-	t.Run("Correct request", func(t *testing.T) {
+	t.Run("Not exists", func(t *testing.T) {
+
+		key := "Foo989"
+
+		result, err := db.CheckExistsKey(key)
+		require.NoErrorf(t, err, "Unexpected error")
+		assert.Equalf(t, int64(0), result, "Value is not equal")
+
+	})
+
+	t.Run("Exists", func(t *testing.T) {
 
 		key := "Foo98"
 		value := "Bar98"
@@ -227,12 +236,12 @@ func TestUpdateStringTTL(t *testing.T) {
 
 	t.Run("Try update missing entry", func(t *testing.T) {
 
-		key := "Foo"
+		key := "Fooo"
 		value := "Bar"
 		ttl := time.Duration(1 * time.Second)
 
 		err := db.UpdateStringTTL(key, value, ttl)
-		require.Nilf(t, err, "Want nil")
+		require.Equalf(t, ErrKeyIsNotExists, err, "Error is not equal")
 	})
 
 	t.Run("Correct update", func(t *testing.T) {
@@ -448,7 +457,7 @@ func TestDeleteString(t *testing.T) {
 
 	t.Run("Missing Key", func(t *testing.T) {
 
-		err := db.DeleteString("")
+		err := db.Delete("")
 		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
 	})
 
@@ -466,7 +475,7 @@ func TestDeleteString(t *testing.T) {
 		assert.Equalf(t, value, rxData, "Values is not equals")
 
 		// Test
-		err = db.DeleteString(key)
+		err = db.Delete(key)
 		require.NoErrorf(t, err, "Unexpected error delete")
 
 		rxData, err = db.RecvString(key)
@@ -479,7 +488,7 @@ func TestDeleteString(t *testing.T) {
 		key := "Foo22"
 
 		// Test
-		err = db.DeleteString(key)
+		err = db.Delete(key)
 		require.Errorf(t, err, "Want error")
 
 	})
@@ -620,12 +629,9 @@ func TestIncrementInteger(t *testing.T) {
 
 		key := "ABC"
 
-		result, err := db.IncrementInteger(key)
-		require.Nilf(t, err, "Want nil")
-		assert.Equalf(t, int64(1), result, "Result is not equal")
+		_, err := db.IncrementInteger(key)
+		assert.Equalf(t, ErrKeyIsNotExists, err, "Result is not equal")
 
-		err = db.DeleteString(key)
-		require.NoErrorf(t, err, "Enexpected error delete")
 	})
 
 	t.Run("Key exists", func(t *testing.T) {
@@ -669,12 +675,8 @@ func TestAddInteger(t *testing.T) {
 		key := "ABC"
 		val := int64(2)
 
-		result, err := db.AddInteger(key, val)
-		require.Nilf(t, err, "Want nil")
-		assert.Equalf(t, int64(2), result, "Result is not equal")
-
-		err = db.DeleteString(key)
-		require.NoErrorf(t, err, "Enexpected error delete")
+		_, err := db.AddInteger(key, val)
+		assert.Equalf(t, ErrKeyIsNotExists, err, "Error is not exists")
 	})
 
 	t.Run("Key exists", func(t *testing.T) {
@@ -689,6 +691,424 @@ func TestAddInteger(t *testing.T) {
 		rxValue, err := db.AddInteger(key, value)
 		require.NoErrorf(t, err, "Unexpected error increment")
 		assert.Equalf(t, int64(4), rxValue, "Values is not equals")
+
+	})
+}
+
+// Test DecrementInteger
+func TestDecrementInteger(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		_, err := db.DecrementInteger("")
+		require.Equalf(t, ErrMissingKey, err, "Errors is not equals")
+	})
+
+	t.Run("Key is not exists", func(t *testing.T) {
+
+		key := "ABC"
+
+		_, err := db.DecrementInteger(key)
+		assert.Equalf(t, ErrKeyIsNotExists, err, "Result is not equal")
+
+	})
+
+	t.Run("Key exists", func(t *testing.T) {
+
+		key := "Foo3434"
+		value := int64(123)
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendIntegerTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error send")
+
+		rxValue, err := db.DecrementInteger(key)
+		require.NoErrorf(t, err, "Unexpected error decrement")
+		assert.Equalf(t, int64(122), rxValue, "Values is not equals")
+
+		err = db.Delete(key)
+		require.NoErrorf(t, err, "Unexpected error delete")
+
+	})
+}
+
+// Test SubInteger
+func TestSubInteger(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		value := int64(2)
+
+		_, err := db.SubInteger(key, value)
+		require.Equalf(t, ErrMissingKey, err, "Errors is not equals")
+	})
+
+	t.Run("Key is not exists", func(t *testing.T) {
+
+		key := "ABC"
+		val := int64(2)
+
+		_, err := db.SubInteger(key, val)
+		assert.Equalf(t, ErrKeyIsNotExists, err, "Error is not exists")
+	})
+
+	t.Run("Key exists", func(t *testing.T) {
+
+		key := "Foo55"
+		value := int64(3)
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendIntegerTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error send")
+
+		value = int64(1)
+
+		rxValue, err := db.SubInteger(key, value)
+		require.NoErrorf(t, err, "Unexpected error subtraction")
+		assert.Equalf(t, int64(2), rxValue, "Values is not equals")
+
+		err = db.Delete(key)
+		require.NoErrorf(t, err, "Unexpected error delete")
+	})
+}
+
+// Test SendfloatTTL
+func TestSendfloatTTL(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		value := float64(123.4)
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendFloatTTL(key, value, ttl)
+		require.Equalf(t, ErrMissingKey, err, "Fault is not equal")
+	})
+
+	t.Run("Missing ttl", func(t *testing.T) {
+
+		key := "Foo"
+		value := float64(123.4)
+		ttl := time.Duration(0 * time.Second)
+
+		err := db.SendFloatTTL(key, value, ttl)
+		require.Equalf(t, ErrMissingTTL, err, "Fault is not equal")
+	})
+
+	t.Run("New key", func(t *testing.T) {
+
+		key := "Foo9"
+		value := float64(123.4)
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendFloatTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error send float")
+
+		err = db.Delete(key)
+		require.NoErrorf(t, err, "Unexpected error post delete")
+	})
+
+	t.Run("Exists key", func(t *testing.T) {
+
+		key := "Foo9"
+		value := float64(123.4)
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendFloatTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error send float")
+
+		err = db.SendFloatTTL(key, value, ttl)
+		assert.Equalf(t, ErrKeyIsExists, err, "Error is not equal")
+
+		err = db.Delete(key)
+		require.NoErrorf(t, err, "Unexpected error post delete")
+	})
+
+}
+
+// Test AddFloat
+func TestAddFloat(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		value := float64(2.3)
+
+		_, err := db.AddFloat(key, value)
+		require.Equalf(t, ErrMissingKey, err, "Errors is not equals")
+	})
+
+	t.Run("Key is not exists", func(t *testing.T) {
+
+		key := "ABC"
+		value := float64(2.3)
+
+		_, err := db.AddFloat(key, value)
+		assert.Equalf(t, ErrKeyIsNotExists, err, "Error is not exists")
+	})
+
+	t.Run("Key exists", func(t *testing.T) {
+
+		key := "Foo9"
+		value := float64(2.3)
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendFloatTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error send")
+
+		rxValue, err := db.AddFloat(key, value)
+		require.NoErrorf(t, err, "Unexpected error increment")
+		assert.Equalf(t, float64(4.6), rxValue, "Values is not equals")
+
+		err = db.Delete(key)
+		require.NoErrorf(t, err, "Unexpected error delete")
+
+	})
+}
+
+// ===============================
+// ===                         ===
+// ===         JSON            ===
+// ===                         ===
+// ===============================
+
+// Test SendNewJSON
+func TestSendNewJSON(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		value := TestJSON{
+			AAA: "A-1",
+			BBB: "B-1",
+			CCC: "C-1",
+		}
+		ttl := 1 * time.Second
+
+		err := db.SendNewJSONTTL(key, value, ttl)
+		assert.Equalf(t, ErrMissingKey, err, "Is not equal error")
+	})
+
+	t.Run("new key", func(t *testing.T) {
+
+		key := "Foo7"
+		value := TestJSON{
+			AAA: "A-1",
+			BBB: "B-1",
+			CCC: "C-1",
+		}
+		ttl := 1 * time.Second
+
+		err := db.SendNewJSONTTL(key, value, ttl)
+		assert.NoErrorf(t, err, "Unexpected error send JSON")
+
+		err = db.Delete(key)
+		assert.NoErrorf(t, err, "Unexpected error delete")
+	})
+
+	t.Run("exists key", func(t *testing.T) {
+
+		key := "Foo7"
+		value := TestJSON{
+			AAA: "A-1",
+			BBB: "B-1",
+			CCC: "C-1",
+		}
+		ttl := 1 * time.Second
+
+		err := db.SendNewJSONTTL(key, value, ttl)
+		assert.NoErrorf(t, err, "Unexpected error send JSON")
+
+		err = db.SendNewJSONTTL(key, value, ttl)
+		assert.Equalf(t, ErrKeyIsExists, err, "Error is not equal")
+
+		err = db.Delete(key)
+		assert.NoErrorf(t, err, "Unexpected error delete")
+	})
+}
+
+// Test RecvJSON
+func TestRecvJSON(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		_, err := db.RecvJSON("")
+		assert.Equalf(t, ErrMissingKey, err, "Error is not equal")
+
+	})
+
+	t.Run("Key not exists", func(t *testing.T) {
+
+		key := "key-1"
+
+		_, err := db.RecvJSON(key)
+		assert.Equalf(t, ErrKeyIsNotExists, err, "Error is not equal")
+
+	})
+
+	t.Run("Key exists", func(t *testing.T) {
+
+		key := "key-1"
+		value := TestJSON{
+			AAA: "AA",
+			BBB: "BB",
+			CCC: "CC",
+		}
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendNewJSONTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error SendNewJSONTTL")
+
+		rxData, err := db.RecvJSON(key)
+		require.NoErrorf(t, err, "Unexpected error RecvJSON")
+		assert.Equalf(t, value.AAA, rxData.AAA, "AAA is not equal")
+		assert.Equalf(t, value.BBB, rxData.BBB, "BBB is not equal")
+		assert.Equalf(t, value.CCC, rxData.CCC, "CCC is not equal")
+
+		err = db.Delete(key)
+		require.NoErrorf(t, err, "Unexpected error delete")
+
+	})
+}
+
+// Test UpdateJSONTTL
+func TestUpdateJSONTTL(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		value := TestJSON{
+			AAA: "1",
+			BBB: "2",
+			CCC: "3",
+		}
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.UpdateJSONTTL(key, value, ttl)
+		assert.Equalf(t, ErrMissingKey, err, "Error is not equal")
+
+	})
+
+	t.Run("Missing ttl", func(t *testing.T) {
+
+		key := "Foo"
+		value := TestJSON{
+			AAA: "1",
+			BBB: "2",
+			CCC: "3",
+		}
+		ttl := time.Duration(0 * time.Second)
+
+		err := db.UpdateJSONTTL(key, value, ttl)
+		assert.Equalf(t, ErrMissingTTL, err, "Error is not equal")
+
+	})
+
+	t.Run("Not exists key", func(t *testing.T) {
+
+		key := "Foo-1111111"
+		value := TestJSON{
+			AAA: "1",
+			BBB: "2",
+			CCC: "3",
+		}
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.UpdateJSONTTL(key, value, ttl)
+		assert.Equalf(t, ErrKeyIsNotExists, err, "Error is not equal")
+
+	})
+
+	t.Run("Update", func(t *testing.T) {
+
+		// Prepare
+		key := "Foo-90"
+		value := TestJSON{
+			AAA: "1",
+			BBB: "2",
+			CCC: "3",
+		}
+		ttl := time.Duration(1 * time.Second)
+
+		err := db.SendNewJSONTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error SendNewJSONTTL")
+
+		defer func() {
+			err := db.Delete(key)
+			assert.NoErrorf(t, err, "Unexpected error DeleteString")
+		}()
+
+		// Test
+		value = TestJSON{
+			AAA: "11",
+			BBB: "22",
+			CCC: "33",
+		}
+		err = db.UpdateJSONTTL(key, value, ttl)
+		require.NoErrorf(t, err, "Unexpected error UpdateJSONTTL")
+
+		rxData, err := db.RecvJSON(key)
+		require.NoErrorf(t, err, "Unexpected error RecvJSON")
+		assert.Equalf(t, value.AAA, rxData.AAA, "AAA is not equal")
+		assert.Equalf(t, value.BBB, rxData.BBB, "BBB is not equal")
+		assert.Equalf(t, value.CCC, rxData.CCC, "CCC is not equal")
 
 	})
 }
