@@ -905,8 +905,8 @@ func TestAddFloat(t *testing.T) {
 // ===                         ===
 // ===============================
 
-// Test SendNewJSON
-func TestSendNewJSON(t *testing.T) {
+// Test SendNewJSONTTL
+func TestSendNewJSONTTL(t *testing.T) {
 
 	db, err := New("localhost:6379", "", 0)
 	require.NoErrorf(t, err, "Fault DB connect")
@@ -1110,5 +1110,650 @@ func TestUpdateJSONTTL(t *testing.T) {
 		assert.Equalf(t, value.BBB, rxData.BBB, "BBB is not equal")
 		assert.Equalf(t, value.CCC, rxData.CCC, "CCC is not equal")
 
+	})
+}
+
+// ===============================
+// ===                         ===
+// ===         List            ===
+// ===                         ===
+// ===============================
+
+// Test SendNewListString
+func TestSendNewListString(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		values := []string{"A", "B", "C"}
+
+		err := db.ListStringNew(key, values)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Missing value", func(t *testing.T) {
+
+		key := "List:1"
+
+		err := db.ListStringNew(key, nil)
+		require.Equalf(t, ErrMissingValue, err, "Error is not equal")
+	})
+
+	t.Run("Empty value", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{}
+
+		err := db.ListStringNew(key, values)
+		require.Equalf(t, ErrMissingValue, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{"A"}
+
+		err := db.ListStringNew(key, values)
+		assert.NoErrorf(t, err, "Unexpected error send")
+
+		err = db.Delete(key)
+		assert.NoErrorf(t, err, "Unexpected error delete")
+	})
+
+	t.Run("Duplicat", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{"A"}
+
+		err := db.ListStringNew(key, values)
+		assert.NoErrorf(t, err, "Unexpected error send")
+
+		err = db.ListStringNew(key, values)
+		assert.Equalf(t, ErrKeyIsExists, err, "Error is not equal")
+
+		err = db.Delete(key)
+		assert.NoErrorf(t, err, "Unexpected error delete")
+	})
+}
+
+// Test ListStringAddLeft
+func TestListStringAddLeft(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		values := []string{"A", "B", "C"}
+
+		err := db.ListStringAddLeft(key, values)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Missing value", func(t *testing.T) {
+
+		key := "List:1"
+
+		err := db.ListStringAddLeft(key, nil)
+		require.Equalf(t, ErrMissingValue, err, "Error is not equal")
+	})
+
+	t.Run("Empty value", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{}
+
+		err := db.ListStringAddLeft(key, values)
+		require.Equalf(t, ErrMissingValue, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{"A"}
+
+		// Create
+		err := db.ListStringNew(key, values)
+		require.NoErrorf(t, err, "Unexpected error send")
+
+		defer func() {
+			err := db.Delete(key)
+			assert.NoErrorf(t, err, "Unexpected error delete")
+		}()
+
+		// Add
+		values = []string{"B"}
+
+		err = db.ListStringAddLeft(key, values)
+		assert.NoErrorf(t, err, "Unexpected error add")
+
+	})
+}
+
+// Test ListStringAddRight
+func TestListStringAddRight(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		values := []string{"A", "B", "C"}
+
+		err := db.ListStringAddRight(key, values)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Missing value", func(t *testing.T) {
+
+		key := "List:1"
+
+		err := db.ListStringAddRight(key, nil)
+		require.Equalf(t, ErrMissingValue, err, "Error is not equal")
+	})
+
+	t.Run("Empty value", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{}
+
+		err := db.ListStringAddRight(key, values)
+		require.Equalf(t, ErrMissingValue, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{"A"}
+
+		// Create
+		err := db.ListStringNew(key, values)
+		require.NoErrorf(t, err, "Unexpected error send")
+
+		defer func() {
+			err := db.Delete(key)
+			assert.NoErrorf(t, err, "Unexpected error delete")
+		}()
+
+		// Add
+		values = []string{"B"}
+
+		err = db.ListStringAddRight(key, values)
+		assert.NoErrorf(t, err, "Unexpected error add")
+
+	})
+}
+
+// Test ListStringRecvLeft
+func TestListStringRecvLeft(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+
+		_, err := db.ListStringRecvLeft(key)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		// Prepare
+		key := "List:1"
+		values := []string{"A", "B", "C"}
+
+		err := db.ListStringNew(key, values)
+		require.NoErrorf(t, err, "Unexpected error send new")
+
+		defer db.Delete(key)
+
+		// Test
+		rxValue, err := db.ListStringRecvLeft(key)
+		require.NoErrorf(t, err, "Unexpected error recieve by index 0")
+		assert.Equalf(t, values[2], rxValue, "Value by index 2 is not equal")
+
+		rxValue, err = db.ListStringRecvLeft(key)
+		require.NoErrorf(t, err, "Unexpected error recieve by index 0")
+		assert.Equalf(t, values[1], rxValue, "Value by index 1 is not equal")
+
+		rxValue, err = db.ListStringRecvLeft(key)
+		require.NoErrorf(t, err, "Unexpected error recieve by index 0")
+		assert.Equalf(t, values[0], rxValue, "Value by index 0 is not equal")
+
+		rxValue, err = db.ListStringRecvLeft(key)
+		require.Equalf(t, ErrKeyIsNotExists, err, "Error is not equal")
+
+	})
+
+}
+
+// Test ListStringRecvRight
+func TestListStringRecvRight(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+
+		_, err := db.ListStringRecvRight(key)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		// Prepare
+		key := "List:1"
+		values := []string{"A", "B", "C"}
+
+		err := db.ListStringNew(key, values)
+		require.NoErrorf(t, err, "Unexpected error send new")
+
+		defer db.Delete(key)
+
+		values2 := []string{"D"}
+		err = db.ListStringAddRight(key, values2)
+		require.NoErrorf(t, err, "Unexpected error add right")
+
+		// Test
+		rxValue, err := db.ListStringRecvRight(key)
+		require.NoErrorf(t, err, "Unexpected error recieve by index 0")
+		assert.Equalf(t, values2[0], rxValue, "Value2 by index 0 is not equal")
+
+		rxValue, err = db.ListStringRecvRight(key)
+		require.NoErrorf(t, err, "Unexpected error recieve by index 0")
+		assert.Equalf(t, values[0], rxValue, "Value by index 0 is not equal")
+
+		rxValue, err = db.ListStringRecvRight(key)
+		require.NoErrorf(t, err, "Unexpected error recieve by index 1")
+		assert.Equalf(t, values[1], rxValue, "Value by index 1 is not equal")
+
+		rxValue, err = db.ListStringRecvRight(key)
+		require.NoErrorf(t, err, "Unexpected error recieve by index 2")
+		assert.Equalf(t, values[2], rxValue, "Value by index 2 is not equal")
+
+		rxValue, err = db.ListStringRecvRight(key)
+		require.Equalf(t, ErrKeyIsNotExists, err, "Error is not equal")
+
+	})
+
+	t.Run("Dublicat", func(t *testing.T) {
+
+		// Prepare
+		key := "List:1"
+		values := []string{"A"}
+
+		err := db.ListStringNew(key, values)
+		require.NoErrorf(t, err, "Unexpected error send new")
+
+		defer db.Delete(key)
+
+		err = db.ListStringAddRight(key, values)
+		require.NoErrorf(t, err, "Unexpected error add right")
+
+		// Test
+		rxValue, err := db.ListStringRecvRight(key)
+		require.NoErrorf(t, err, "Unexpected error recieve first")
+		assert.Equalf(t, values[0], rxValue, "first Value by index 0 is not equal")
+
+		rxValue, err = db.ListStringRecvRight(key)
+		require.NoErrorf(t, err, "Unexpected error recieve dublicat")
+		assert.Equalf(t, values[0], rxValue, "dublicat Value by index 0 is not equal")
+
+		rxValue, err = db.ListStringRecvRight(key)
+		require.Equalf(t, ErrKeyIsNotExists, err, "Error is not equal")
+
+	})
+
+}
+
+// Test ListStringRecvLen
+func TestListStringRecvLen(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+
+		_, err := db.ListStringRecvLen(key)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := "List:1"
+
+		_, err := db.ListStringRecvLen(key)
+		require.Equalf(t, ErrKeyIsNotExists, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		// Prepare
+		key := "List:1"
+		values := []string{"A", "B", "C"}
+
+		err := db.ListStringNew(key, values)
+		require.NoErrorf(t, err, "Unexpected error send new")
+
+		defer db.Delete(key)
+
+		// Test
+		rxValue, err := db.ListStringRecvLen(key)
+		require.NoErrorf(t, err, "Unexpected error add right")
+		assert.Equalf(t, int64(len(values)), rxValue, "Size is not equal")
+
+	})
+
+}
+
+// Test ListStringMoveByNameToNewLeft
+func TestListStringMoveByNameToNewLeft(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing srcKey", func(t *testing.T) {
+
+		srcKey := "ListSrc:1"
+		destKey := "ListDist:1"
+		values := []string{"A", "B", "C"}
+		move := values[1]
+
+		// Prepare
+		err := db.ListStringNew(srcKey, values)
+		require.NoErrorf(t, err, "Unexpected error ListStringNew")
+		defer db.Delete(srcKey)
+
+		// Test
+		srcKey = ""
+		_, err = db.ListStringMoveByNameToNewLeft(srcKey, destKey, move)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Missing destKey", func(t *testing.T) {
+
+		srcKey := "ListSrc:1"
+		destKey := "ListDist:1"
+		values := []string{"A", "B", "C"}
+		move := values[1]
+
+		// Prepare
+		err := db.ListStringNew(srcKey, values)
+		require.NoErrorf(t, err, "Unexpected error ListStringNew")
+		defer db.Delete(srcKey)
+
+		// Test
+		destKey = ""
+		_, err = db.ListStringMoveByNameToNewLeft(srcKey, destKey, move)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Missing value", func(t *testing.T) {
+
+		srcKey := "ListSrc:1"
+		destKey := "ListDist:1"
+		values := []string{"A", "B", "C"}
+		move := values[1]
+
+		// Prepare
+		err := db.ListStringNew(srcKey, values)
+		require.NoErrorf(t, err, "Unexpected error ListStringNew")
+		defer db.Delete(srcKey)
+
+		// Test
+		move = ""
+		_, err = db.ListStringMoveByNameToNewLeft(srcKey, destKey, move)
+		require.Equalf(t, ErrMissingValue, err, "Error is not equal")
+	})
+
+	t.Run("Target list is exists", func(t *testing.T) {
+
+		srcKey := "ListSrc:1"
+		destKey := "ListDist:1"
+		values := []string{"A", "B", "C"}
+		move := values[1]
+
+		// Prepare
+		err := db.ListStringNew(srcKey, values)
+		require.NoErrorf(t, err, "Unexpected error ListStringNew src")
+		defer db.Delete(srcKey)
+
+		err = db.ListStringNew(destKey, values)
+		require.NoErrorf(t, err, "Unexpected error ListStringNew dest")
+		defer db.Delete(destKey)
+
+		// Test
+		_, err = db.ListStringMoveByNameToNewLeft(srcKey, destKey, move)
+		require.Equalf(t, ErrKeyIsExists, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		srcKey := "ListSrc:1"
+		destKey := "ListDist:1"
+		values := []string{"A", "B", "C"}
+		move := values[1]
+
+		// Prepare
+		err := db.ListStringNew(srcKey, values)
+		require.NoErrorf(t, err, "Unexpected error ListStringNew src")
+		defer func() {
+			db.Delete(srcKey)
+			db.Delete(destKey)
+		}()
+
+		// Test
+		rxVolume, err := db.ListStringMoveByNameToNewLeft(srcKey, destKey, move)
+		require.NoErrorf(t, err, "Unexpected error move")
+		assert.Equalf(t, int64(1), rxVolume, "Value is not equal")
+
+		rxValue, err := db.ListStringRecvLeft(destKey)
+		require.NoErrorf(t, err, "Unexpected error recieve")
+		assert.Equalf(t, values[1], rxValue, "rxValue is not equal")
+
+	})
+}
+
+// Test ListStringRecvRange
+func TestListStringRecvRange(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		indStart := int64(0)
+		indStop := int64(1)
+
+		// Test
+		_, err = db.ListStringRecvRange(key, indStart, indStop)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Index EQ", func(t *testing.T) {
+
+		key := "List:1"
+		indStart := int64(1)
+		indStop := int64(1)
+
+		// Test
+		_, err = db.ListStringRecvRange(key, indStart, indStop)
+		require.Equalf(t, ErrIndex, err, "Error is not equal")
+	})
+
+	t.Run("Start GT stop", func(t *testing.T) {
+
+		key := "List:1"
+		indStart := int64(2)
+		indStop := int64(1)
+
+		// Test
+		_, err = db.ListStringRecvRange(key, indStart, indStop)
+		require.Equalf(t, ErrIndex, err, "Error is not equal")
+	})
+
+	t.Run("Start LT 0", func(t *testing.T) {
+
+		key := "List:1"
+		indStart := int64(-2)
+		indStop := int64(1)
+
+		// Test
+		_, err = db.ListStringRecvRange(key, indStart, indStop)
+		require.Equalf(t, ErrIndex, err, "Error is not equal")
+	})
+
+	t.Run("top LT 0", func(t *testing.T) {
+
+		key := "List:1"
+		indStart := int64(2)
+		indStop := int64(-1)
+
+		// Test
+		_, err = db.ListStringRecvRange(key, indStart, indStop)
+		require.Equalf(t, ErrIndex, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{"A", "B", "C"}
+		indStart := int64(0)
+		indStop := int64(1)
+
+		// Prepare
+		err := db.ListStringNew(key, values)
+		require.NoErrorf(t, err, "Unexpected error ListStringNew src")
+		defer func() {
+			db.Delete(key)
+		}()
+
+		// Test
+		rxData, err := db.ListStringRecvRange(key, indStart, indStop)
+		require.NoErrorf(t, err, "Unexpected error recieve range")
+		require.Equalf(t, 2, len(rxData), "Value is not equal")
+		assert.Equalf(t, values[2], rxData[0], "Value is not equal index 0")
+		assert.Equalf(t, values[1], rxData[1], "Value is not equal index 1")
+	})
+}
+
+// Test ListStringTrimRange
+func TestListStringTrimRange(t *testing.T) {
+
+	db, err := New("localhost:6379", "", 0)
+	require.NoErrorf(t, err, "Fault DB connect")
+
+	defer func() {
+		err := db.Close()
+		assert.NoErrorf(t, err, "Unexpected error close connect")
+	}()
+
+	t.Run("Missing key", func(t *testing.T) {
+
+		key := ""
+		indStart := int64(0)
+		indStop := int64(1)
+
+		// Test
+		_, err = db.ListStringTrimRange(key, indStart, indStop)
+		require.Equalf(t, ErrMissingKey, err, "Error is not equal")
+	})
+
+	t.Run("Index EQ", func(t *testing.T) {
+
+		key := "List:1"
+		indStart := int64(1)
+		indStop := int64(1)
+
+		// Test
+		_, err = db.ListStringTrimRange(key, indStart, indStop)
+		require.Equalf(t, ErrIndex, err, "Error is not equal")
+	})
+
+	t.Run("Start LT 0", func(t *testing.T) {
+
+		key := "List:1"
+		indStart := int64(-2)
+		indStop := int64(1)
+
+		// Test
+		_, err = db.ListStringTrimRange(key, indStart, indStop)
+		require.Equalf(t, ErrIndex, err, "Error is not equal")
+	})
+
+	t.Run("Correct", func(t *testing.T) {
+
+		key := "List:1"
+		values := []string{"A", "B", "C"}
+		indStart := int64(1)
+		indStop := int64(-1)
+
+		// Prepare
+		err := db.ListStringNew(key, values)
+		require.NoErrorf(t, err, "Unexpected error ListStringNew src")
+		defer func() {
+			db.Delete(key)
+		}()
+
+		// Test
+		rxData, err := db.ListStringTrimRange(key, indStart, indStop)
+		require.NoErrorf(t, err, "Unexpected error recieve range")
+		assert.Equalf(t, "OK", rxData, "Status is not equal")
+
+		rxSize, err := db.ListStringRecvLen(key)
+		require.NoErrorf(t, err, "Unexpected error recieve size")
+		assert.Equalf(t, int64(2), rxSize, "Size is not equal")
 	})
 }

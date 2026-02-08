@@ -27,6 +27,15 @@ var (
 	// key is not exists
 	ErrKeyIsNotExists = errors.New("key is not exists")
 
+	// value is not exists
+	ErrValueIsNotExists = errors.New("value is not exists")
+
 	// key is exists
 	ErrKeyIsExists = errors.New("key is exists")
+
+	// error index
+	ErrIndex = errors.New("error index")
+
+	// index stop is over size
+	ErrIndexStopOver = errors.New("index stop is over size")
 )

@@ -59,6 +59,24 @@ type RedisI interface {
 	RecvJSON(key string) (TestJSON, error)
 	// Update JSON.
 	UpdateJSONTTL(key string, value TestJSON, ttl time.Duration) error
+	// Send new list of strings.
+	ListStringNew(key string, values []string) (err error)
+	// Add to the left side exists list.
+	ListStringAddLeft(key string, values []string) (err error)
+	// Add to the right side exists list.
+	ListStringAddRight(key string, values []string) (err error)
+	// Recieve value from left side list.
+	ListStringRecvLeft(key string) (value string, err error)
+	// Recieve value from right side list.
+	ListStringRecvRight(key string) (value string, err error)
+	// Recieve len of exists list.
+	ListStringRecvLen(key string) (value int64, err error)
+	// Move element of list dy name to the new list.
+	ListStringMoveByNameToNewLeft(srcKey, destKey string, value string) (int64, error)
+	// Recieve range of values of exists list.
+	ListStringRecvRange(key string, indStart, indStop int64) (values []string, err error)
+	// Trim range values of exists list.
+	ListStringTrimRange(key string, indStart, indStop int64) (result string, err error)
 }
 
 var inst *objectRedis
